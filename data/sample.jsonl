@@ -1,0 +1,12 @@
+{"input": "Is fever a symptom?", "label": "yes"}
+{"input": "Is the sky green?", "label": "no"}
+{"input": "Does water freeze at 0C? yes or no", "label": "yes"}
+{"input": "Is 2+2=5?", "label": "no"}
+{"input": "Can birds fly?", "label": "yes"}
+{"input": "Is fire cold?", "label": "no"}
+{"input": "Do cats bark?", "label": "no"}
+{"input": "Is the Earth round?", "label": "yes"}
+{"input": "Is chocolate sweet?", "label": "yes"}
+{"input": "Is snow hot?", "label": "no"}
+{"input": "Do fish swim?", "label": "yes"}
+{"input": "Is zero greater than one?", "label": "no"}
