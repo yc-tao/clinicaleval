@@ -1,0 +1,24 @@
+seed: 42
+run_name: "phase0_spike"
+
+data:
+  path: "data/sample.jsonl"
+  text_key: "input"
+  label_key: "label"
+  split: "test"
+  max_samples: 10
+
+gen:
+  mode: "reverse"           # optional: reverse | echo | uppercase
+  template: "Q: {x}\nA:"
+  max_tokens: 64
+
+metrics:
+  - name: "exact_match"
+  - name: "f1_binary"
+
+report:
+  out_dir: "outputs"
+  save_samples: true
+  save_metrics: true
+  save_log: true
