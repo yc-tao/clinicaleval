@@ -48,10 +48,6 @@ For advanced model evaluation using Lighteval and vLLM:
 ```bash
 # Install with HuggingFace extras (includes lighteval, vllm)
 pip install -e .[hf]
-
-# Set environment variables for vLLM (if encountering GPU issues)
-export VLLM_USE_TRITON_FLASH_ATTN=0
-export CUDA_VISIBLE_DEVICES=0
 ```
 
 ### 4. Development Setup
@@ -75,20 +71,6 @@ pip install -e .[hf]
 clinicaleval --help
 ```
 
-### 5. Environment Variables (Optional)
-
-For vLLM troubleshooting, you may need these environment variables:
-
-```bash
-# Disable Triton flash attention if encountering compilation errors
-export VLLM_USE_TRITON_FLASH_ATTN=0
-
-# Specify GPU device
-export CUDA_VISIBLE_DEVICES=0
-
-# Alternative multiprocessing method
-export VLLM_WORKER_MULTIPROC_METHOD=spawn
-```
 
 ## Run
 
@@ -139,45 +121,6 @@ clinicaleval \
 ```
 
 Note: Running a full evaluation can be resource- and time-intensive.
-
-## Troubleshooting
-
-### vLLM Triton Compilation Errors
-
-If you encounter errors like `ConvertTritonGPUToLLVM` failed:
-
-```bash
-# Try disabling Triton kernels
-export VLLM_USE_TRITON_FLASH_ATTN=0
-
-# Test with a simple model first
-clinicaleval \
-  --config configs/base.yaml \
-  lighteval.enabled=true \
-  lighteval.model_path=microsoft/DialoGPT-medium \
-  lighteval.tasks="leaderboard|boolq|0|0"
-```
-
-### GPU Memory Issues
-
-```bash
-# Limit GPU memory usage
-clinicaleval \
-  --config configs/base.yaml \
-  lighteval.enabled=true \
-  lighteval.model_path=your-model \
-  lighteval.model_parameters.gpu_memory_utilization=0.7
-```
-
-### Check Your Setup
-
-```bash
-# Verify CUDA availability
-python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, Device: {torch.cuda.get_device_name()}')"
-
-# Check GPU memory
-nvidia-smi
-```
 
 ## Outputs
 
