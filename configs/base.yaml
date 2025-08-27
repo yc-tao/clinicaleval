@@ -22,3 +22,15 @@ report:
   save_samples: true
   save_metrics: true
   save_log: true
+
+# Optional: enable to use Hugging Face Lighteval with vLLM backend
+lighteval:
+  enabled: false
+  backend: "vllm"
+  # Set your model here or override via CLI: lighteval.model_path=Qwen/Qwen2.5-7B-Instruct
+  model_path: null
+  # Task string as accepted by Lighteval, e.g., "leaderboard|truthfulqa:mc|0|0"
+  tasks: "leaderboard|boolq|0|0"
+  # Optional advanced parameters forwarded to Lighteval's model config
+  model_parameters: {}
+  generation_parameters: {}

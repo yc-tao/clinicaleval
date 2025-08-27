@@ -2,21 +2,108 @@
 
 This repository contains a minimal evaluation skeleton. It can run on toy data and a stubbed inference backend. The goal is reproducibility and simplicity.
 
+## Requirements
+
+- Python >= 3.9
+- Modern Python packaging via `pyproject.toml`
+
+## Dependencies
+
+This project uses modern Python packaging with `pyproject.toml` for dependency management:
+
+**Core Dependencies:**
+- `pandas>=2.0` - Data manipulation and analysis
+- `pyyaml>=6.0` - YAML configuration parsing  
+- `numpy>=1.21.0` - Numerical computing support
+
+**Optional Dependencies:**
+- `lighteval` - Hugging Face evaluation framework (install with `[hf]` extra)
+- `vllm` - High-performance LLM inference (install with `[hf]` extra)
+
 ## Setup
 
+### Standard Installation
+
 ```bash
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install in editable mode (recommended for development)
+pip install -e .
+```
+
+### With Hugging Face Integration
+
+For advanced model evaluation using Lighteval and vLLM:
+
+```bash
+pip install -e .[hf]
+```
+
+### Development Setup
+
+```bash
+# Clone and set up for development
+git clone <your-repo-url>
+cd clinicaleval
 python -m venv .venv
 source .venv/bin/activate
-pip install pyyaml pandas
+pip install -e .
+
+# Verify installation
+clinicaleval --help
 ```
 
 ## Run
 
 ```bash
-python scripts/run_eval.py --config configs/base.yaml
+clinicaleval --config configs/base.yaml
 # override parts of the config
-python scripts/run_eval.py --config configs/base.yaml data.max_samples=5 gen.mode=echo
+clinicaleval --config configs/base.yaml data.max_samples=5 gen.mode=echo
 ```
+
+Alternative invocations:
+
+```bash
+# Run via module
+python -m clinicaleval.cli --config configs/base.yaml
+
+# Legacy script path (still supported)
+python scripts/run_eval.py --config configs/base.yaml
+```
+
+### Use Hugging Face Lighteval with vLLM and Qwen
+
+Install extras (if not already installed):
+
+```bash
+pip install -e .[hf]
+```
+
+Set your model path and enable the integration via config overrides. Example with Qwen on vLLM:
+
+```bash
+clinicaleval \
+  --config configs/base.yaml \
+  lighteval.enabled=true \
+  lighteval.backend=vllm \
+  lighteval.model_path=Qwen/Qwen2.5-7B-Instruct \
+  lighteval.tasks="leaderboard|truthfulqa:mc|0|0"
+```
+
+This will generate a temporary model YAML (under `outputs/`) and invoke the `lighteval` CLI with the `vllm` backend. You can pass advanced settings via:
+
+```bash
+clinicaleval \
+  --config configs/base.yaml \
+  lighteval.enabled=true \
+  lighteval.model_path=Qwen/Qwen2.5-7B-Instruct \
+  lighteval.model_parameters.tensor_parallel_size=2 \
+  lighteval.generation_parameters.max_new_tokens=512
+```
+
+Note: Running a full evaluation can be resource- and time-intensive.
 
 ## Outputs
 
@@ -40,13 +127,29 @@ Use `data.max_samples` to quickly run on a subset of the data.
 
 - This is **Phase 0**. Future phases will abstract data sources, inference backends and metrics into separate modules.
 
-### Appendix: Planned Phase 1 Layout
+## Project Structure
 
 ```
 clinicaleval/
-├── src/
-├── tests/
-├── configs/
-├── data/
-└── scripts/
+├── src/clinicaleval/          # Main package source
+│   ├── __init__.py           # Package initialization
+│   └── cli.py                # Command-line interface
+├── configs/                  # Configuration files
+│   └── base.yaml            # Default configuration
+├── data/                    # Sample data
+│   └── sample.jsonl         # Test dataset
+├── scripts/                 # Legacy scripts
+│   └── run_eval.py          # Backward compatibility wrapper
+├── outputs/                 # Generated results (created at runtime)
+├── pyproject.toml           # Modern Python packaging configuration
+├── README.md               # This file
+└── LICENSE                 # License information
 ```
+
+### Appendix: Planned Phase 1 Enhancements
+
+- Abstract data sources into pluggable modules
+- Extract inference backends into separate components  
+- Modularize metrics computation system
+- Add comprehensive test suite
+- Enhanced configuration management
