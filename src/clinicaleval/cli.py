@@ -71,7 +71,26 @@ def read_json(path: str, max_samples: int) -> List[Dict[str, Any]]:
 
 
 def generate(inputs: List[str], cfg: Dict[str, Any]) -> List[str]:
-    mode = cfg.get('mode', 'reverse')
+    """
+    Generation function supporting both stub modes and real LLM inference.
+    """
+    gen_cfg = cfg.get('gen', {})
+    mode = gen_cfg.get('mode', 'reverse')
+    
+    if mode == 'yes_no_classification':
+        # Use direct vLLM integration for real LLM generation
+        try:
+            from .vllm_integration import generate_with_vllm
+            return generate_with_vllm(inputs, cfg)
+        except ImportError as e:
+            raise NotImplementedError(
+                f"vLLM integration failed: {e}. "
+                "Install vLLM with: pip install vllm"
+            )
+        except Exception as e:
+            raise RuntimeError(f"vLLM generation failed: {e}")
+    
+    # Stub generation modes
     outputs = []
     for x in inputs:
         if mode == 'reverse':
@@ -80,10 +99,6 @@ def generate(inputs: List[str], cfg: Dict[str, Any]) -> List[str]:
             outputs.append(x)
         elif mode == 'uppercase':
             outputs.append(x.upper())
-        elif mode == 'yes_no_classification':
-            # For the actual implementation, this would call an LLM
-            # For now, we'll return a placeholder that can be processed by to_label
-            outputs.append("yes")
         else:
             outputs.append("")
     return outputs
@@ -112,6 +127,47 @@ def compute_metrics(preds: List[Any], golds: List[Any]) -> Dict[str, float]:
     return {'exact_match': exact, 'f1_binary': f1}
 
 
+def prepare_custom_dataset(cfg: Dict[str, Any], out_dir: str) -> str:
+    """
+    Prepare custom dataset for lighteval by loading local data and converting to lighteval format.
+    Returns path to the temporary dataset file.
+    """
+    data_cfg = cfg.get('data', {})
+    data_path = data_cfg.get('path', '')
+    
+    # Load the data
+    if data_path.endswith('.jsonl'):
+        records = read_jsonl(data_path, data_cfg.get('max_samples', 0))
+    elif data_path.endswith('.json'):
+        records = read_json(data_path, data_cfg.get('max_samples', 0))
+    else:
+        raise ValueError(f"Unsupported file format: {data_path}")
+    
+    if not records:
+        raise ValueError('No data samples found for custom lighteval task')
+    
+    # Convert to lighteval format and create temporary dataset
+    text_key = data_cfg.get('text_key', 'input')
+    label_key = data_cfg.get('label_key', 'label')
+    
+    # Create dataset in lighteval-compatible format
+    dataset_records = []
+    for record in records:
+        dataset_record = {
+            "text": record[text_key],
+            "label": record[label_key]
+        }
+        dataset_records.append(dataset_record)
+    
+    # Save as temporary JSONL file for lighteval to load
+    dataset_path = os.path.join(out_dir, 'custom_dataset.jsonl')
+    with open(dataset_path, 'w', encoding='utf-8') as f:
+        for record in dataset_records:
+            f.write(json.dumps(record, ensure_ascii=False) + '\n')
+    
+    return dataset_path
+
+
 def run_lighteval(cfg: Dict[str, Any]) -> int:
     le_cfg = cfg.get('lighteval', {})
     backend = le_cfg.get('backend', 'vllm')
@@ -133,18 +189,40 @@ def run_lighteval(cfg: Dict[str, Any]) -> int:
     out_dir = report_cfg.get('out_dir', 'outputs')
     os.makedirs(out_dir, exist_ok=True)
 
+    # Create model config file
     with tempfile.NamedTemporaryFile('w', suffix='.yaml', prefix='lighteval_model_', dir=out_dir, delete=False) as tf:
         yaml.safe_dump(model_yaml, tf, sort_keys=False)
         model_yaml_path = tf.name
 
-    task_string = le_cfg.get('tasks', 'leaderboard|boolq|0|0')
-
-    cmd = [
-        'lighteval',
-        backend,
-        model_yaml_path,
-        task_string,
-    ]
+    # Check if we should use custom task with local data
+    use_custom_task = le_cfg.get('use_custom_data', False)
+    
+    if use_custom_task:
+        # Prepare custom dataset for lighteval
+        custom_dataset_path = prepare_custom_dataset(cfg, out_dir)
+        # Use module name instead of file path to avoid dataset_module_factory
+        custom_tasks_path = 'clinicaleval.custom_tasks'
+        
+        task_string = le_cfg.get('tasks', 'clinical|readmission_30day|0|0')
+        
+        cmd = [
+            'lighteval',
+            backend,
+            model_yaml_path,
+            task_string,
+            '--custom-tasks', custom_tasks_path,
+            '--output-dir', out_dir
+        ]
+    else:
+        # Use standard lighteval tasks
+        task_string = le_cfg.get('tasks', 'leaderboard|boolq|0|0')
+        
+        cmd = [
+            'lighteval',
+            backend,
+            model_yaml_path,
+            task_string,
+        ]
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info('Running lighteval: %s', ' '.join(cmd))

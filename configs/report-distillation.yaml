@@ -19,4 +19,17 @@ report:
   save_samples: true
   save_metrics: true
 
+# Lighteval configuration for real LLM evaluation
+lighteval:
+  enabled: false  # Set to true to enable lighteval
+  backend: "vllm"
+  model_path: null  # Set to your model path, e.g., "/ssd-shared/qwen/Qwen3-1.7B"
+  use_custom_data: true  # Use custom dataset instead of standard tasks
+  tasks: "clinical|readmission_30day|0|0"  # Custom task string
+  model_parameters:
+    tensor_parallel_size: 1
+  generation_parameters:
+    max_new_tokens: 10
+    temperature: 0.0
+
 seed: 42
