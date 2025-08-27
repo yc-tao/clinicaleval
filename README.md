@@ -5,6 +5,7 @@ This repository contains a minimal evaluation skeleton. It can run on toy data a
 ## Requirements
 
 - Python >= 3.9
+- Conda for environment management
 - Modern Python packaging via `pyproject.toml`
 
 ## Dependencies
@@ -22,37 +23,71 @@ This project uses modern Python packaging with `pyproject.toml` for dependency m
 
 ## Setup
 
-### Standard Installation
+### 1. Create Conda Environment
 
 ```bash
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install in editable mode (recommended for development)
-pip install -e .
+# Create new conda environment with Python 3.9
+conda create -n clinicaleval python=3.9 -y
+conda activate clinicaleval
 ```
 
-### With Hugging Face Integration
+### 2. Standard Installation
+
+```bash
+# Install core dependencies only
+pip install -e .
+
+# Verify basic installation
+clinicaleval --help
+```
+
+### 3. With Hugging Face Integration
 
 For advanced model evaluation using Lighteval and vLLM:
 
 ```bash
+# Install with HuggingFace extras (includes lighteval, vllm)
 pip install -e .[hf]
+
+# Set environment variables for vLLM (if encountering GPU issues)
+export VLLM_USE_TRITON_FLASH_ATTN=0
+export CUDA_VISIBLE_DEVICES=0
 ```
 
-### Development Setup
+### 4. Development Setup
 
 ```bash
-# Clone and set up for development
-git clone <your-repo-url>
+# Complete development setup from scratch
+git clone https://github.com/yc-tao/clinicaleval.git
 cd clinicaleval
-python -m venv .venv
-source .venv/bin/activate
+
+# Create and activate conda environment
+conda create -n clinicaleval python=3.9 -y
+conda activate clinicaleval
+
+# Install in editable mode
 pip install -e .
+
+# For HF integration (optional)
+pip install -e .[hf]
 
 # Verify installation
 clinicaleval --help
+```
+
+### 5. Environment Variables (Optional)
+
+For vLLM troubleshooting, you may need these environment variables:
+
+```bash
+# Disable Triton flash attention if encountering compilation errors
+export VLLM_USE_TRITON_FLASH_ATTN=0
+
+# Specify GPU device
+export CUDA_VISIBLE_DEVICES=0
+
+# Alternative multiprocessing method
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
 ```
 
 ## Run
@@ -104,6 +139,45 @@ clinicaleval \
 ```
 
 Note: Running a full evaluation can be resource- and time-intensive.
+
+## Troubleshooting
+
+### vLLM Triton Compilation Errors
+
+If you encounter errors like `ConvertTritonGPUToLLVM` failed:
+
+```bash
+# Try disabling Triton kernels
+export VLLM_USE_TRITON_FLASH_ATTN=0
+
+# Test with a simple model first
+clinicaleval \
+  --config configs/base.yaml \
+  lighteval.enabled=true \
+  lighteval.model_path=microsoft/DialoGPT-medium \
+  lighteval.tasks="leaderboard|boolq|0|0"
+```
+
+### GPU Memory Issues
+
+```bash
+# Limit GPU memory usage
+clinicaleval \
+  --config configs/base.yaml \
+  lighteval.enabled=true \
+  lighteval.model_path=your-model \
+  lighteval.model_parameters.gpu_memory_utilization=0.7
+```
+
+### Check Your Setup
+
+```bash
+# Verify CUDA availability
+python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, Device: {torch.cuda.get_device_name()}')"
+
+# Check GPU memory
+nvidia-smi
+```
 
 ## Outputs
 
