@@ -52,6 +52,24 @@ def read_jsonl(path: str, max_samples: int) -> List[Dict[str, Any]]:
     return records
 
 
+def read_json(path: str, max_samples: int) -> List[Dict[str, Any]]:
+    """Read a JSON file containing a list of records."""
+    if not os.path.exists(path):
+        print(f"Data file not found: {path}")
+        return []
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        records = data
+    else:
+        # If it's not a list, assume it's a single record
+        records = [data]
+    
+    if 0 < max_samples <= len(records):
+        records = records[:max_samples]
+    return records
+
+
 def generate(inputs: List[str], cfg: Dict[str, Any]) -> List[str]:
     mode = cfg.get('mode', 'reverse')
     outputs = []
@@ -62,6 +80,10 @@ def generate(inputs: List[str], cfg: Dict[str, Any]) -> List[str]:
             outputs.append(x)
         elif mode == 'uppercase':
             outputs.append(x.upper())
+        elif mode == 'yes_no_classification':
+            # For the actual implementation, this would call an LLM
+            # For now, we'll return a placeholder that can be processed by to_label
+            outputs.append("yes")
         else:
             outputs.append("")
     return outputs
@@ -72,6 +94,9 @@ def to_label(text: str) -> str:
 
 
 def label_to_int(x: Any) -> int:
+    # Handle both string labels and integer labels
+    if isinstance(x, int):
+        return x
     return 1 if str(x).strip().lower() in {'yes', '1', 'true'} else 0
 
 
@@ -148,7 +173,17 @@ def main() -> None:
         return
 
     data_cfg = cfg.get('data', {})
-    records = read_jsonl(data_cfg.get('path', ''), data_cfg.get('max_samples', 0))
+    data_path = data_cfg.get('path', '')
+    
+    # Determine file format and load accordingly
+    if data_path.endswith('.jsonl'):
+        records = read_jsonl(data_path, data_cfg.get('max_samples', 0))
+    elif data_path.endswith('.json'):
+        records = read_json(data_path, data_cfg.get('max_samples', 0))
+    else:
+        print(f"Unsupported file format: {data_path}")
+        return
+        
     if not records:
         print('No data samples found.')
         return
@@ -156,7 +191,15 @@ def main() -> None:
     text_key = data_cfg.get('text_key', 'input')
     label_key = data_cfg.get('label_key', 'label')
     inputs = [r[text_key] for r in records]
-    golds = [r[label_key] for r in records]
+    raw_golds = [r[label_key] for r in records]
+    
+    # Convert integer labels to yes/no format if needed
+    golds = []
+    for gold in raw_golds:
+        if isinstance(gold, int):
+            golds.append('yes' if gold == 1 else 'no')
+        else:
+            golds.append(str(gold).lower())
 
     gen_cfg = cfg.get('gen', {})
     template = gen_cfg.get('template', '{x}')

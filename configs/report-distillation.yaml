@@ -1,0 +1,22 @@
+data:
+  path: "/ssd-shared/report-distillation.json"
+  text_key: "text"
+  label_key: "label"
+  max_samples: 0  # 0 means load all samples
+
+gen:
+  mode: "yes_no_classification"  # New mode for yes/no classification
+  template: "{x}\n\nAnswer (yes or no):"
+  max_tokens: 10
+
+metrics:
+  - name: "exact_match"
+  - name: "f1_binary"
+
+report:
+  out_dir: "outputs/report-distillation"
+  save_log: true
+  save_samples: true
+  save_metrics: true
+
+seed: 42
